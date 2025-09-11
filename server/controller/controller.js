@@ -1,112 +1,137 @@
 let Drugdb = require('../model/model');
 
-
-// creates and saves a new drug
-exports.create = (req,res)=>{
-    // validate incoming request
-    if(!req.body){// if content of request (form data) is empty
-        res.status(400).send({ message : "Content cannot be emtpy!"});// respond with this
-        return;
+// ---------------------- CREATE ----------------------
+exports.create = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Content cannot be empty!" });
     }
 
-    //create new drug
     const drug = new Drugdb({
-        name : req.body.name,//take values from form and assign to schema
-        card : req.body.card,
+        name: req.body.name,
+        card: req.body.card,
         pack: req.body.pack,
-        perDay : req.body.perDay,
-        dosage : req.body.dosage
-    })
+        perDay: req.body.perDay,
+        dosage: req.body.dosage
+    });
 
-    //save created drug to database
-    drug
-        .save(drug)//use the save operation on drug
+    drug.save()
         .then(data => {
-            console.log(`${data.name} added to the database`) 
+            console.log(`✅ ${data.name} added to the database`);
             res.redirect('/manage');
         })
-        .catch(err =>{
-            res.status(500).send({//catch error
-                message : err.message || "There was an error while adding the drug"
+        .catch(err => {
+            console.error("🔥 Error while adding drug:", err);
+            res.status(500).send({
+                message: err.message || "There was an error while adding the drug"
             });
         });
+};
 
-}
-
-
-// can either retrieve all drugs from the database or retrieve a single user
-exports.find = (req,res)=>{
-
-    if(req.query.id){//if we are searching for drug using its ID
+// ---------------------- FIND ----------------------
+exports.find = (req, res) => {
+    if (req.query.id) {
         const id = req.query.id;
 
         Drugdb.findById(id)
-            .then(data =>{
-                if(!data){
-                    res.status(404).send({ message : "Can't find drug with id: "+ id})
-                }else{
-                    res.send(data)
+            .then(data => {
+                if (!data) {
+                    res.status(404).send({ message: "Can't find drug with id: " + id });
+                } else {
+                    res.send(data);
                 }
             })
-            .catch(err =>{
-                res.status(500).send({ message: "Error retrieving drug with id: " + id})
-            })
-
-    }else{
+            .catch(err => {
+                console.error("🔥 Error retrieving drug:", err);
+                res.status(500).send({ message: "Error retrieving drug with id: " + id });
+            });
+    } else {
         Drugdb.find()
-            .then(drug => {
-                res.send(drug)
+            .then(drugs => {
+                res.send(drugs);
             })
             .catch(err => {
-                res.status(500).send({ message : err.message || "An error occurred while retriving drug information" })
-            })
+                console.error("🔥 Error retrieving drugs:", err);
+                res.status(500).send({
+                    message: err.message || "An error occurred while retrieving drug information"
+                });
+            });
     }
-}
+};
 
-
-// edits a drug selected using its  ID
-exports.update = (req,res)=>{
-    if(!req.body){
-        return res
-            .status(400)
-            .send({ message : "Cannot update an empty drug"})
+// ---------------------- UPDATE ----------------------
+exports.update = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Cannot update with empty data" });
     }
 
     const id = req.params.id;
-    Drugdb.findByIdAndUpdate(id, req.body, { useFindAndModify: false})
+
+    Drugdb.findByIdAndUpdate(id, req.body, { new: true })
         .then(data => {
-            if(!data){
-                res.status(404).send({ message : `Drug with id: ${id} cannot be updated`})
-            }else{
+            if (!data) {
+                res.status(404).send({ message: `Drug with id ${id} not found` });
+            } else {
                 res.send(data);
-                //res.redirect('/');
             }
         })
-        .catch(err =>{
-            res.status(500).send({ message : "Error in updating drug information"})
-        })
+        .catch(err => {
+            console.error("🔥 Error updating drug:", err);
+            res.status(500).send({ message: "Error updating drug information" });
+        });
+};
 
-}
-
-
-// deletes a drug using its drug ID
-exports.delete = (req,res)=>{
+// ---------------------- DELETE ----------------------
+exports.delete = (req, res) => {
     const id = req.params.id;
 
     Drugdb.findByIdAndDelete(id)
         .then(data => {
-            if(!data){
-                res.status(404).send({ message : `Cannot Delete drug with id: ${id}. Pls check id`})
-            }else{
-                res.send({
-                    message : `${data.name} was deleted successfully!`
-                })
+            if (!data) {
+                res.status(404).send({ message: `Cannot delete drug with id: ${id}. Please check the id` });
+            } else {
+                res.send({ message: `${data.name} was deleted successfully!` });
             }
         })
-        .catch(err =>{
-            res.status(500).send({
-                message: "Could not delete Drug with id=" + id
-            });
+        .catch(err => {
+            console.error("🔥 Error deleting drug:", err);
+            res.status(500).send({ message: "Could not delete drug with id=" + id });
         });
+};
 
-}
+// ---------------------- PURCHASE ----------------------
+exports.purchase = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { quantity } = req.body;
+
+        console.log("📦 Purchase request:", { id, quantity });
+
+        if (!quantity || quantity <= 0) {
+            return res.status(400).send({ message: "Quantity must be greater than 0" });
+        }
+
+        const drug = await Drugdb.findById(id);
+        if (!drug) {
+            return res.status(404).send({ message: "Drug not found" });
+        }
+
+        console.log(`✅ Found drug: ${drug.name}, current stock: ${drug.pack}`);
+
+        if (drug.pack < quantity) {
+            return res.status(400).send({ message: "Not enough stock" });
+        }
+
+        drug.pack -= quantity;
+        const updatedDrug = await drug.save();
+
+        console.log(`✅ Purchase successful. Remaining stock: ${updatedDrug.pack}`);
+
+        res.send({
+            message: `Successfully purchased ${quantity} pack(s) of ${updatedDrug.name}`,
+            drug: updatedDrug
+        });
+    } catch (err) {
+        console.error("🔥 Error while purchasing drug:", err);
+        res.status(500).send({ message: "Error while purchasing drug" });
+    }
+};

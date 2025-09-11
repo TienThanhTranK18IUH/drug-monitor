@@ -1,25 +1,38 @@
-const express = require('express');// As in the server.js
-const route = express.Router(); //Allows us use express router in this file
-const services = require('../services/render');//uses the render.js file from services here
+const express = require('express');
+const route = express.Router();
 
-const controller = require('../controller/controller');//uses the render.js file from services here
+// Services (render các trang ejs)
+const services = require('../services/render');
 
+// Controller (CRUD logic)
+const controller = require('../controller/controller');
 
+// Middleware validate drug input
+const validateDrug = require('../middleware/validateDrug');
+
+// ------------------- RENDER PAGES -------------------
 route.get('/', services.home);
-
-
 route.get('/manage', services.manage);
 route.get('/dosage', services.dosage);
 route.get('/purchase', services.purchase);
 route.get('/add-drug', services.addDrug);
 route.get('/update-drug', services.updateDrug);
 
+// ------------------- API CRUD -------------------
+// Create drug (validate input trước khi lưu)
+route.post('/api/drugs', validateDrug, controller.create);
 
-
-// API for CRUD operations
-route.post('/api/drugs', controller.create);
+// Get all drugs / get by id
 route.get('/api/drugs', controller.find);
-route.put('/api/drugs/:id', controller.update);
+
+// Update drug
+route.put('/api/drugs/:id', validateDrug, controller.update);
+
+// Delete drug
 route.delete('/api/drugs/:id', controller.delete);
 
-module.exports = route;//exports this so it can always be used elsewhere
+// ------------------- PURCHASE -------------------
+// Purchase function (mua thuốc)
+route.post('/api/drugs/:id/purchase', controller.purchase);
+
+module.exports = route;
