@@ -1,101 +1,96 @@
 let Drugdb = require('../model/model');
 
 // ---------------------- CREATE ----------------------
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Content cannot be empty!" });
     }
 
-    const drug = new Drugdb({
-        name: req.body.name,
-        card: req.body.card,
-        pack: req.body.pack,
-        perDay: req.body.perDay,
-        dosage: req.body.dosage
-    });
-
-    drug.save()
-        .then(data => {
-            console.log(`✅ ${data.name} added to the database`);
-            res.redirect('/manage');
-        })
-        .catch(err => {
-            console.error("🔥 Error while adding drug:", err);
-            res.status(500).send({
-                message: err.message || "There was an error while adding the drug"
-            });
+    try {
+        const drug = new Drugdb({
+            name: req.body.name,
+            card: req.body.card,
+            pack: req.body.pack,
+            perDay: req.body.perDay,
+            dosage: req.body.dosage
         });
+
+        const data = await drug.save();
+        console.log(`✅ Added: ${data.name} (id: ${data._id})`);
+
+        res.redirect('/manage');
+    } catch (err) {
+        console.error("🔥 Error while adding drug:", err);
+        res.status(500).send({
+            message: err.message || "There was an error while adding the drug"
+        });
+    }
 };
 
 // ---------------------- FIND ----------------------
-exports.find = (req, res) => {
-    if (req.query.id) {
-        const id = req.query.id;
+exports.find = async (req, res) => {
+    try {
+        if (req.query.id) {
+            const id = req.query.id;
+            const data = await Drugdb.findById(id);
 
-        Drugdb.findById(id)
-            .then(data => {
-                if (!data) {
-                    res.status(404).send({ message: "Can't find drug with id: " + id });
-                } else {
-                    res.send(data);
-                }
-            })
-            .catch(err => {
-                console.error("🔥 Error retrieving drug:", err);
-                res.status(500).send({ message: "Error retrieving drug with id: " + id });
-            });
-    } else {
-        Drugdb.find()
-            .then(drugs => {
-                res.send(drugs);
-            })
-            .catch(err => {
-                console.error("🔥 Error retrieving drugs:", err);
-                res.status(500).send({
-                    message: err.message || "An error occurred while retrieving drug information"
-                });
-            });
+            if (!data) {
+                return res.status(404).send({ message: `Can't find drug with id: ${id}` });
+            }
+
+            console.log(`📌 Found drug: ${data.name} (id: ${id})`);
+            res.send(data);
+        } else {
+            const drugs = await Drugdb.find();
+            console.log(`📌 Retrieved ${drugs.length} drugs`);
+            res.send(drugs);
+        }
+    } catch (err) {
+        console.error("🔥 Error retrieving drugs:", err);
+        res.status(500).send({
+            message: err.message || "An error occurred while retrieving drug information"
+        });
     }
 };
 
 // ---------------------- UPDATE ----------------------
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Cannot update with empty data" });
     }
 
-    const id = req.params.id;
+    try {
+        const id = req.params.id;
+        const data = await Drugdb.findByIdAndUpdate(id, req.body, { new: true });
 
-    Drugdb.findByIdAndUpdate(id, req.body, { new: true })
-        .then(data => {
-            if (!data) {
-                res.status(404).send({ message: `Drug with id ${id} not found` });
-            } else {
-                res.send(data);
-            }
-        })
-        .catch(err => {
-            console.error("🔥 Error updating drug:", err);
-            res.status(500).send({ message: "Error updating drug information" });
-        });
+        if (!data) {
+            return res.status(404).send({ message: `Drug with id ${id} not found` });
+        }
+
+        console.log(`✅ Updated drug: ${data.name} (id: ${id})`);
+        res.send(data);
+    } catch (err) {
+        console.error("🔥 Error updating drug:", err);
+        res.status(500).send({ message: "Error updating drug information" });
+    }
 };
 
 // ---------------------- DELETE ----------------------
-exports.delete = (req, res) => {
-    const id = req.params.id;
+exports.delete = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const drug = await Drugdb.findByIdAndDelete(id);
 
-    Drugdb.findByIdAndDelete(id)
-        .then(data => {
-            if (!data) {
-                res.status(404).send({ message: `Cannot delete drug with id: ${id}. Please check the id` });
-            } else {
-                res.send({ message: `${data.name} was deleted successfully!` });
-            }
-        })
-        .catch(err => {
-            console.error("🔥 Error deleting drug:", err);
-            res.status(500).send({ message: "Could not delete drug with id=" + id });
-        });
+        if (!drug) {
+            return res.status(404).send({ message: "Drug not found" });
+        }
+
+        console.log(`🗑️ Deleted drug: ${drug.name} (id: ${id})`);
+        res.status(200).send({ message: `${drug.name} deleted successfully` });
+    } catch (err) {
+        console.error("🔥 Error deleting drug:", err);
+        res.status(500).send({ error: err.message });
+    }
 };
 
 // ---------------------- PURCHASE ----------------------
