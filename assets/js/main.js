@@ -64,12 +64,49 @@ if(window.location.pathname === "/manage"){
 }
 
 // ------------------- PURCHASE -------------------
-if(window.location.pathname === "/purchase"){
+if(window.location.pathname === "/purchase") {
+    // Submit form để tính toán lại
     $("#drug_days").submit(function(event){
         event.preventDefault();
         let days = +$("#days").val();
 
+        $("table#purchase_table tbody tr").each(function(){
+            let perDay = +$(this).data("perday");
+            let card = +$(this).data("card");
+            let pack = +$(this).data("pack");
+
+            let pills = days * perDay;
+
+            let cardsNeeded = Math.ceil(pills / card);
+            let cardInfo = `${cardsNeeded} (${pack/card} ${pack/card < 2 ? "card" : "cards"} per pack)`;
+
+            let packsNeeded = Math.ceil(pills / pack);
+
+            $(this).find(".cards-cell").text(cardInfo);
+            $(this).find(".packs-cell").text(packsNeeded);
+        });
+
         $("#purchase_table").show();
-        alert("Drugs for " + days + " days!");
+    });
+
+    // Nút mua thuốc
+    $(".purchase-btn").click(function(){
+        let row = $(this).closest("tr");
+        let id = row.data("id");
+        let packsNeeded = row.find(".packs-cell").text();
+
+        if(confirm(`Bạn có chắc muốn mua ${packsNeeded} pack(s)?`)) {
+            $.ajax({
+                url: `${window.location.origin}/api/drugs/${id}/purchase`,
+                method: "POST",
+                data: { quantity: packsNeeded }
+            }).done(function(response){
+                alert(response.message);
+                location.reload();
+            }).fail(function(err){
+                alert("❌ Lỗi khi mua: " + err.responseText);
+            });
+        }
     });
 }
+
