@@ -1,0 +1,18 @@
+<!-- add header -->
+<%- include('includes/_header') %>
+<!-- end header -->
+
+<main id="main">
+  <h2>🚨 Oops! Something went wrong</h2>
+  <p><%= message %></p>
+
+  <% if (error && error.stack) { %>
+    <pre><%= error.stack %></pre>
+  <% } %>
+
+  <a href="/">Go back to Home</a>
+</main>
+
+<!-- add footer -->
+<%- include('includes/_footer') %>
+<!-- end footer -->

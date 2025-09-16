@@ -1,7 +1,7 @@
-let Drugdb = require('../model/model');
+const Drugdb = require('../model/model');
 
 // ---------------------- CREATE ----------------------
-exports.create = async (req, res) => {
+exports.create = async (req, res, next) => {
     if (!req.body) {
         return res.status(400).send({ message: "Content cannot be empty!" });
     }
@@ -21,14 +21,12 @@ exports.create = async (req, res) => {
         res.redirect('/manage');
     } catch (err) {
         console.error("🔥 Error while adding drug:", err);
-        res.status(500).send({
-            message: err.message || "There was an error while adding the drug"
-        });
+        next(err); // chuyển sang global error handler
     }
 };
 
 // ---------------------- FIND ----------------------
-exports.find = async (req, res) => {
+exports.find = async (req, res, next) => {
     try {
         if (req.query.id) {
             const id = req.query.id;
@@ -47,14 +45,12 @@ exports.find = async (req, res) => {
         }
     } catch (err) {
         console.error("🔥 Error retrieving drugs:", err);
-        res.status(500).send({
-            message: err.message || "An error occurred while retrieving drug information"
-        });
+        next(err);
     }
 };
 
 // ---------------------- UPDATE ----------------------
-exports.update = async (req, res) => {
+exports.update = async (req, res, next) => {
     if (!req.body) {
         return res.status(400).send({ message: "Cannot update with empty data" });
     }
@@ -71,12 +67,12 @@ exports.update = async (req, res) => {
         res.send(data);
     } catch (err) {
         console.error("🔥 Error updating drug:", err);
-        res.status(500).send({ message: "Error updating drug information" });
+        next(err);
     }
 };
 
 // ---------------------- DELETE ----------------------
-exports.delete = async (req, res) => {
+exports.delete = async (req, res, next) => {
     try {
         const id = req.params.id;
         const drug = await Drugdb.findByIdAndDelete(id);
@@ -89,12 +85,12 @@ exports.delete = async (req, res) => {
         res.status(200).send({ message: `${drug.name} deleted successfully` });
     } catch (err) {
         console.error("🔥 Error deleting drug:", err);
-        res.status(500).send({ error: err.message });
+        next(err);
     }
 };
 
 // ---------------------- PURCHASE ----------------------
-exports.purchase = async (req, res) => {
+exports.purchase = async (req, res, next) => {
     try {
         const id = req.params.id;
         const { quantity } = req.body;
@@ -127,6 +123,6 @@ exports.purchase = async (req, res) => {
         });
     } catch (err) {
         console.error("🔥 Error while purchasing drug:", err);
-        res.status(500).send({ message: "Error while purchasing drug" });
+        next(err);
     }
 };
